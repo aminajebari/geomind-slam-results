@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GeoMind SLAM Results</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1b1f24; --muted: #5b6470; --line: #e2e5ea;
+    --accent: #2a78d6; --val: #e08a00; --test: #8a8f98; --est: #d62a2a; --gt: #1b1f24;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1216; --card: #171b21; --ink: #e8eaed; --muted: #9aa3ad; --line: #2a3038;
+      --accent: #5aa0f0; --gt: #e8eaed; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1216; --card: #171b21; --ink: #e8eaed; --muted: #9aa3ad; --line: #2a3038;
+    --accent: #5aa0f0; --gt: #e8eaed; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header, main { max-width: 1180px; margin: 0 auto;
+                 padding-left: max(16px, env(safe-area-inset-left, 0px));
+                 padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  header { padding-top: 32px; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h2 { font-size: 20px; margin: 40px 0 6px; }
+  .sub { color: var(--muted); margin: 0; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
+  nav a { color: var(--accent); text-decoration: none; border: 1px solid var(--line);
+          background: var(--card); padding: 4px 12px; border-radius: 999px; font-size: 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+          gap: 12px; margin-top: 22px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .kpi b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }
+  .kpi span { color: var(--muted); font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: 16px; margin-top: 12px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 12px; }
+  @media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
+  img, video { width: 100%; height: auto; display: block; border-radius: 8px; background: #000; }
+  img { background: #fff; }
+  .cap { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+  .missing { color: var(--val); font-size: 14px; padding: 24px; text-align: center;
+             border: 1px dashed var(--line); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .scroll { overflow-x: auto; }
+  #viewer { position: relative; height: 520px; border-radius: 8px; overflow: hidden; background: #0b0e12; }
+  #viewer canvas { display: block; }
+  .vbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .vbar button { font: inherit; font-size: 14px; padding: 5px 12px; border-radius: 8px; cursor: pointer;
+                 border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  .vbar button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .legend { display: flex; gap: 16px; color: var(--muted); font-size: 13px; margin-left: auto; }
+  .legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .flow div { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+  .flow div small { display: block; color: var(--muted); font-size: 12px; }
+  .flow span { color: var(--muted); }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  pre { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; }
+  footer { height: 48px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>FARNESS GeoMind: LiDAR SLAM results</h1>
+  <p class="sub">KITTI odometry, Velodyne HDL-64E. Point-to-plane ICP against a local map, with constant-velocity prediction.</p>
+  <nav>
+    <a href="#videos">Videos</a><a href="#viewer-sec">3D map</a><a href="#seq04">Sequence 04</a>
+    <a href="#seq08">Sequence 08</a><a href="#split">Data split</a><a href="#pipeline">Pipeline</a>
+  </nav>
+  <div class="kpis">
+    <div class="kpi"><b>0.42 m</b><span>ATE RMSE, sequence 04 (394 m)</span></div>
+    <div class="kpi"><b>1.04 %</b><span>KITTI drift, sequence 04</span></div>
+    <div class="kpi"><b>94 ms</b><span>per scan at voxel 0.8 m (sensor: 100 ms)</span></div>
+    <div class="kpi"><b>43,552</b><span>scans split train / val / test</span></div>
+  </div>
+</header>
+
+<main>
+  <h2 id="videos">1. Videos of the runs</h2>
+  <p class="sub">The map grows scan by scan; red is our trajectory, black the ground truth.</p>
+  <div class="grid2">
+    <div class="card">
+      <video src="media/seq04.mp4" controls muted loop playsinline preload="metadata"></video>
+      <p class="cap"><b>Sequence 04 (train)</b>, 271 scans, 27 s, 394 m, compared with the ground truth.</p>
+    </div>
+    <div class="card">
+      <video src="media/seq08.mp4" controls muted loop playsinline preload="metadata"></video>
+      <p class="cap"><b>Sequence 08 (validation)</b>, first 500 scans (50 s), urban loop. No ground-truth poses are available locally, so only the estimate is shown.</p>
+    </div>
+  </div>
+
+  <h2 id="viewer-sec">2. Interactive 3D map</h2>
+  <p class="sub">Drag to rotate, scroll to zoom, right-drag to pan. Colour is height.</p>
+  <div class="card">
+    <div class="vbar">
+      <button type="button" data-map="seq04" aria-pressed="true">Sequence 04</button>
+      <button type="button" data-map="seq08" aria-pressed="false">Sequence 08</button>
+      <div class="legend"><span><i style="background:#ff4d4d"></i>our SLAM</span><span><i style="background:#ffffff"></i>ground truth</span></div>
+    </div>
+    <div id="viewer"></div>
+    <p class="cap" id="viewer-info"></p>
+  </div>
+
+  <h2 id="seq04">3. Sequence 04: accuracy against ground truth</h2>
+  <div class="card">
+    <img src="media/seq04_map.png" alt="Top view of the sequence 04 map with estimated and ground-truth trajectories, and a side view of the height drift">
+    <p class="cap">Top: map seen from above with both trajectories, almost on top of each other. Bottom: side view. The road climbs and the estimate stays flatter; this pitch drift is most of the error.</p>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <img src="media/seq04_eval_v08.png" alt="Height profile and position error over time, voxel 0.8 m">
+      <p class="cap">Voxel 0.8 m: error grows slowly and stays under 0.5 m for the first 9 s.</p>
+    </div>
+    <div class="card">
+      <img src="media/seq04_eval_v05.png" alt="Height profile and position error over time, voxel 0.5 m">
+      <p class="cap">Voxel 0.5 m: same behaviour; the finer grid does not remove the vertical drift.</p>
+    </div>
+  </div>
+  <div class="card scroll">
+    <table>
+      <tr><th>Voxel</th><th>ATE RMSE</th><th>Final error</th><th>KITTI drift</th><th>Rotation drift</th><th>Time per scan*</th></tr>
+      <tr><td>0.5 m</td><td>0.42 m</td><td>8.3 m</td><td>1.05 %</td><td>0.0059 deg/m</td><td>170 ms</td></tr>
+      <tr><td>0.8 m</td><td>0.44 m</td><td>7.8 m</td><td>1.04 %</td><td>0.0056 deg/m</td><td>94 ms</td></tr>
+    </table>
+    <p class="cap">* Measured on 100 scans of sequence 00. The KITTI sensor period is 100 ms, so voxel 0.8 m runs in real time.</p>
+  </div>
+
+  <h2 id="seq08">4. Sequence 08: validation run</h2>
+  <div class="card">
+    <img src="media/seq08_map.png" alt="Top view of the sequence 08 map with the estimated trajectory">
+    <p class="cap">First 500 scans of sequence 08 (50 s): map seen from above with the estimated trajectory, about 380 m north then a right turn.</p>
+  </div>
+  <div class="card scroll">
+    <table>
+      <tr><th>Scans</th><th>Estimated path</th><th>Registration RMSE</th><th>Map points (0.5 m)</th><th>Time per scan*</th></tr>
+      <tr><td>500</td><td>468.6 m</td><td>0.173 m</td><td>473,052</td><td>284 ms</td></tr>
+    </table>
+    <p class="cap">Accuracy cannot be computed yet: the sequence 08 ground-truth poses (<code>data_odometry_poses.zip</code>) are not downloaded. The estimated height falls by about 19 m over the first 400 m, which looks like the same pitch drift seen on sequence 04. Loop closure and pose-graph optimisation are the planned fix.<br>* Measured on a throttled laptop; sequence 00 at the same voxel size ran at 94 ms.</p>
+  </div>
+
+  <h2 id="split">5. Data split</h2>
+  <div class="card">
+    <img src="media/split.png" alt="Bar chart of scans per KITTI sequence coloured by split">
+    <p class="cap">The split is by sequence, so near-identical consecutive scans never cross between splits. The SLAM has no learned weights: <b>train</b> is used to tune parameters, <b>val</b> to choose them, and <b>test</b> is run once (its ground truth is withheld by KITTI).</p>
+  </div>
+  <div class="card scroll">
+    <table>
+      <tr><th>Split</th><th>Sequences</th><th>Scans</th><th>Share</th><th>Ground truth</th></tr>
+      <tr><td style="color:var(--accent)">train</td><td>00–07, 09, 10</td><td>19,130</td><td>44 %</td><td>public</td></tr>
+      <tr><td style="color:var(--val)">val</td><td>08</td><td>4,071</td><td>9 %</td><td>public</td></tr>
+      <tr><td style="color:var(--test)">test</td><td>11–21</td><td>20,351</td><td>47 %</td><td>withheld (KITTI benchmark)</td></tr>
+    </table>
+  </div>
+
+  <h2 id="pipeline">6. Pipeline</h2>
+  <div class="card">
+    <div class="flow">
+      <div>Loader<small>.bin → (123k, 4)</small></div><span>→</span>
+      <div>Range filter<small>2–60 m → 120k</small></div><span>→</span>
+      <div>Voxel grid<small>0.5 m → 14k</small></div><span>→</span>
+      <div>Motion prediction<small>constant velocity</small></div><span>→</span>
+      <div>Point-to-plane ICP<small>~8 iterations</small></div><span>→</span>
+      <div>Local map<small>60 m, ~45k pts</small></div><span>→</span>
+      <div>Global map + metrics<small>map.ply, ATE, drift</small></div>
+    </div>
+    <p class="cap">Algorithms, reasons and the input/output of every stage: <code>docs/slam_pipeline.md</code> in the repository.</p>
+  </div>
+
+  <h2>Regenerate</h2>
+  <pre>python scripts/make_split.py
+python scripts/plot_split.py
+python scripts/run_slam_trial.py --sequence 08 --frames 500 --voxel 0.8 \
+  --velodyne-dir dataset/sequences/08/velodyne --out outputs/seq08_val
+python scripts/view_results.py --dir outputs/seq08_val
+python scripts/make_video.py --dir outputs/seq08_val --sequence 08 \
+  --velodyne-dir dataset/sequences/08/velodyne
+python scripts/export_web_map.py --dir outputs/seq04_v0.8 --name seq04 --calib data/kitti04/04_calib.txt
+python scripts/export_web_map.py --dir outputs/seq08_val --name seq08</pre>
+  <footer></footer>
+</main>
+
+<script src="data/seq04.js"></script>
+<script src="data/seq08.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+  // Missing media (run not generated yet) gets a hint instead of a broken box.
+  document.querySelectorAll("img, video").forEach(el => {
+    el.addEventListener("error", () => {
+      const note = document.createElement("div");
+      note.className = "missing";
+      note.textContent = "Not generated yet: " + el.getAttribute("src") + " ";
+      el.replaceWith(note);
+    });
+  });
+
+  const maps = window.GEOMIND_MAPS || {};
+  const box = document.getElementById("viewer");
+  const info = document.getElementById("viewer-info");
+
+  if (!window.THREE) {
+    box.innerHTML = '<div class="missing">The 3D viewer needs an internet connection to load three.js.</div>';
+  } else {
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    box.appendChild(renderer.domElement);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b0e12);
+    const camera = new THREE.PerspectiveCamera(55, 1, 0.5, 5000);
+    camera.up.set(0, 0, 1);  // KITTI Velodyne frame: z is up
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    let group = null;
+
+    function line(flat, color) {
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute("position", new THREE.Float32BufferAttribute(flat, 3));
+      return new THREE.Line(geom, new THREE.LineBasicMaterial({ color }));
+    }
+
+    function show(name) {
+      document.querySelectorAll("[data-map]").forEach(b =>
+        b.setAttribute("aria-pressed", String(b.dataset.map === name)));
+      if (group) scene.remove(group);
+      const data = maps[name];
+      if (!data) {
+        info.textContent = "Map " + name + " not exported yet: run scripts/export_web_map.py (see Regenerate).";
+        group = null;
+        return;
+      }
+      group = new THREE.Group();
+      const pts = data.points, n = pts.length / 3, colors = new Float32Array(pts.length);
+      const c = new THREE.Color();
+      // Colour range from the 2nd-98th height percentiles, so each map uses the full scale.
+      const zs = [];
+      for (let i = 0; i < n; i += 50) zs.push(pts[3 * i + 2]);
+      zs.sort((a, b) => a - b);
+      const zlo = zs[Math.floor(zs.length * 0.02)], zhi = zs[Math.floor(zs.length * 0.98)];
+      for (let i = 0; i < n; i++) {
+        const t = Math.min(1, Math.max(0, (pts[3 * i + 2] - zlo) / (zhi - zlo)));
+        c.setHSL(0.66 - 0.5 * t, 0.85, 0.35 + 0.25 * t);
+        colors.set([c.r, c.g, c.b], 3 * i);
+      }
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+      geom.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      group.add(new THREE.Points(geom, new THREE.PointsMaterial({ size: 0.35, vertexColors: true })));
+      if (data.gt) group.add(line(data.gt, 0xffffff));
+      const est = line(data.est, 0xff4d4d);
+      est.position.z = 0.3;  // lift slightly so it is not hidden under the ground truth
+      group.add(est);
+      scene.add(group);
+
+      geom.computeBoundingSphere();
+      const s = geom.boundingSphere;
+      controls.target.copy(s.center);
+      camera.position.set(s.center.x - s.radius * 0.6, s.center.y - s.radius * 0.9, s.center.z + s.radius * 0.7);
+      controls.update();
+      info.textContent = n.toLocaleString() + " map points, " + (data.est.length / 3) + " poses" +
+        (data.gt ? ", with ground truth." : ", no ground truth.");
+    }
+
+    function resize() {
+      const w = box.clientWidth, h = box.clientHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    addEventListener("resize", resize);
+    resize();
+    document.querySelectorAll("[data-map]").forEach(b => b.addEventListener("click", () => show(b.dataset.map)));
+    show("seq04");
+    (function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+  }
+</script>
+</body>
+</html>
